@@ -23,9 +23,11 @@ const App = () => {
   };
 
   const voteAnecdote = () => {
-    const copyOfVotes = [...votes];
-    copyOfVotes[selected] += 1;
-    setVotes(copyOfVotes);
+    setVotes(prevVotes => {
+      const newVotes = [...prevVotes];
+      newVotes[selected] += 1;
+      return newVotes;
+    });
   };
 
   const getMostVotes = () => {
