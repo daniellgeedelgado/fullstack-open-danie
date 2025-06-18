@@ -15,6 +15,8 @@ const Content = ({ text, value }) => {
 
 const Feedback = ({ good, neutral, bad }) => {
   const all = good + neutral + bad;
+  const average = ((good - bad) / all).toFixed(1);
+  const positive = ((good / all) * 100).toFixed(1);
 
   if (all == 0) {
     return <p>No feedback given</p>;
@@ -26,6 +28,9 @@ const Feedback = ({ good, neutral, bad }) => {
         <Content text="good" value={good} />
         <Content text="neutral" value={neutral} />
         <Content text="bad" value={bad} />
+        <Content text="all" value={all} />
+        <Content text="average" value={average} />
+        <Content text="positive" value={positive} />
       </tbody>
     </table>
   );
