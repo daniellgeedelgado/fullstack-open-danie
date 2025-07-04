@@ -1,49 +1,75 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
 import Filter from './components/Filter'
 import PersonForm from './components/PersonForm'
 import Persons from './components/Persons'
+import personService from './services/persons'
 
 const App = () => {
   const [persons, setPersons] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
+  const [newPerson, setNewPerson] = useState({ name: '', number: '' })
   const [filter, setFilter] = useState('')
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data)
-      })
+    personService.getAll().then(setPersons)
   }, [])
 
-  const handleNameChange = (event) => setNewName(event.target.value)
-  const handleNumberChange = (event) => setNewNumber(event.target.value)
+  const handleInputChange = (event) => {
+    const { name, value } = event.target
+    setNewPerson({ ...newPerson, [name]: value })
+  }
+
   const handleFilterChange = (event) => setFilter(event.target.value)
 
   const addPerson = (event) => {
     event.preventDefault()
-    const nameExists = persons.some(
-      (person) => person.name.toLowerCase() === newName.toLowerCase()
+
+    const existingPerson = persons.find(
+      (person) => person.name.toLowerCase() === newPerson.name.toLowerCase()
     )
-    if (nameExists) {
-      alert(`${newName} is already added to phonebook`)
+
+    if (existingPerson) {
+      const confirmUpdate = window.confirm(
+        `${existingPerson.name} is already added to phonebook. Replace the old number with a new one?`
+      )
+
+      if (confirmUpdate) {
+        const updatedPerson = { ...existingPerson, number: newPerson.number }
+
+        personService
+          .update(existingPerson.id, updatedPerson)
+          .then((returnedPerson) => {
+            setPersons(
+              persons.map((person) =>
+                person.id !== existingPerson.id ? person : returnedPerson
+              )
+            )
+            setNewPerson({ name: '', number: '' })
+          })
+          .catch((error) => {
+            alert(`Failed to update ${existingPerson.name}. It may have been removed.`)
+            setPersons(persons.filter((p) => p.id !== existingPerson.id))
+          })
+      }
+
       return
     }
 
-    const newPerson = {
-      name: newName,
-      number: newNumber
-    }
+    personService.create(newPerson).then(returnedPerson => {
+      setPersons(persons.concat(returnedPerson))
+      setNewPerson({ name: '', number: '' })
+    })
+}
 
-    axios
-      .post('http://localhost:3001/persons', newPerson)
-      .then(response => {
-        setPersons(persons.concat(response.data))
-        setNewName('')
-        setNewNumber('')
+
+  const deletePerson = (id, name) => {
+    if (window.confirm(`Delete ${name}?`)) {
+      personService.remove(id).then(() => {
+        setPersons(persons.filter((person) => person.id !== id))
+      }).catch(() => {
+        alert(`The person '${name}' was already deleted from the server.`)
+        setPersons(persons.filter((person) => person.id !== id))
       })
+    }
   }
 
   const personsToShow = persons.filter((person) =>
@@ -58,14 +84,12 @@ const App = () => {
       <h3>add a new</h3>
       <PersonForm
         onSubmit={addPerson}
-        nameValue={newName}
-        numberValue={newNumber}
-        onNameChange={handleNameChange}
-        onNumberChange={handleNumberChange}
+        person={newPerson}
+        onChange={handleInputChange}
       />
 
       <h3>Numbers</h3>
-      <Persons persons={personsToShow} />
+      <Persons persons={personsToShow} onDelete={deletePerson} />
     </div>
   )
 }
